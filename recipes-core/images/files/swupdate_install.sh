@@ -95,16 +95,11 @@ do_postinst()
     umount "$UPGRADE_MNT"
     rmdir "$UPGRADE_MNT"
 
-    # Set tries on the updated slot entry for boot counting
-    # tries must be placed before the linux line (Boot Loader Spec requirement)
-    updated_entry="/boot/loader/entries/seapath-slot-${slot}.conf"
-    if [ -f "${updated_entry}" ] ; then
-        sed -i '/^tries /d' "${updated_entry}"
-        sed -i "/^linux /i tries 3" "${updated_entry}"
-    fi
+    # Set boot count file on ESP (systemd-boot doesn't support tries for
+    # Type #1 entries, so we use our own counter file)
+    echo "3" > /boot/.seapath-bootcount
 
     # Set the updated slot as the default (systemd-boot reads default from loader.conf)
-    # We avoid bootctl for EFI variable access; direct file editing is more reliable
     sed -i "s/^default .*/default seapath-slot-${slot}.conf/" /boot/loader/loader.conf || \
         die "Could not set default boot entry"
 
