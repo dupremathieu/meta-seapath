@@ -13,32 +13,28 @@
 
 set -e
 
-mount /boot 2>/dev/null || true
+# Make sure ESP is properly mounted (unmount any stale mount first)
+umount /boot 2>/dev/null || true
+/usr/share/update/mount_boot.sh mount
 
 # Sync kernel from rootfs to ESP
-if [ -f /usr/lib/modules/*/vmlinuz ] || [ -f /boot/bzImage ] ; then
-    src_kernel=""
-    for k in /boot/bzImage /usr/lib/modules/*/vmlinuz ; do
-        [ -f "$k" ] && { src_kernel="$k"; break; }
-    done
-    if [ -n "${src_kernel}" ] ; then
-        cp "${src_kernel}" /boot/bzImage 2>/dev/null || echo "Warning: kernel copy failed"
-    fi
+if [ -f /boot/bzImage ]; then
+    echo "ESP kernel present, nothing to sync"
 fi
 
-# Sync loader entries (rootfs /boot may have newer entries after SWUpdate)
-if [ -d /usr/lib/modules ] || [ -d /boot/loader/entries ] ; then
-    # If /boot/loader doesn't exist on ESP, create it from rootfs
-    if [ ! -d /boot/loader ] ; then
-        mkdir -p /boot/loader/entries
-        for entry in /boot/loader/entries/*.conf ; do
-            [ -f "$entry" ] || continue
-            cp "$entry" /boot/loader/entries/
-        done
-    fi
+# Ensure loader directory exists on ESP
+if [ ! -d /boot/loader ]; then
+    mkdir -p /boot/loader/entries
 fi
+
+# Sync loader entries if rootfs /boot has entries we need
+for entry in /boot/loader/entries/*.conf; do
+    [ -f "$entry" ] || continue
+    cp "$entry" /boot/loader/entries/ 2>/dev/null || true
+done
 
 # Refresh systemd-boot (installs/updates bootloader binary and EFI entry)
 bootctl update 2>/dev/null || echo "Warning: bootctl update failed"
 
-umount /boot 2>/dev/null || true
+# Unmount ESP
+/usr/share/update/mount_boot.sh umount
