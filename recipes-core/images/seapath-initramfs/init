@@ -2,15 +2,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SEAPATH initramfs init script
 
-echo "initramfs: starting"
+log() { echo "initramfs: $*" > /dev/console 2>&1; }
+
+log "starting"
 
 mount -t proc proc /proc
-echo "initramfs: proc mounted"
+log "proc mounted"
 
 mount -t sysfs sysfs /sys
-echo "initramfs: sysfs mounted"
+log "sysfs mounted"
 
-mount -t devtmpfs devtmpfs /dev 2>/dev/null || echo "initramfs: devtmpfs mount failed (may be built-in)"
+mount -t devtmpfs devtmpfs /dev 2>/dev/null || log "devtmpfs mount failed (may be built-in)"
 
 # Parse root= from kernel command line
 ROOTSPEC=""
@@ -19,7 +21,7 @@ for arg in $(cat /proc/cmdline); do
         root=*) ROOTSPEC="${arg#root=}" ;;
     esac
 done
-echo "initramfs: root spec = $ROOTSPEC"
+log "root spec = $ROOTSPEC"
 
 # Resolve root device
 if [ -n "$ROOTSPEC" ]; then
@@ -27,51 +29,52 @@ if [ -n "$ROOTSPEC" ]; then
     case "$ROOTSPEC" in
         LABEL=*)
             LABEL="${ROOTSPEC#LABEL=}"
-            echo "initramfs: looking for LABEL=$LABEL"
+            log "looking for LABEL=$LABEL"
             ROOTDEV=$(findfs LABEL="$LABEL" 2>/dev/null)
             ;;
         PARTUUID=*)
             UUID="${ROOTSPEC#PARTUUID=}"
-            echo "initramfs: looking for PARTUUID=$UUID"
+            log "looking for PARTUUID=$UUID"
             ROOTDEV=$(findfs PARTUUID="$UUID" 2>/dev/null)
             ;;
         /dev/*)
             ROOTDEV="$ROOTSPEC"
             ;;
     esac
-    echo "initramfs: root device = $ROOTDEV"
+    log "root device = $ROOTDEV"
 fi
 
-# Fallback: try to find rootfs by label
+# Fallback
 if [ -z "$ROOTDEV" ]; then
-    echo "initramfs: trying fallback - looking for LABEL=rootfs0"
+    log "trying fallback LABEL=rootfs0"
     sleep 3
     ROOTDEV=$(findfs LABEL=rootfs0 2>/dev/null)
-    echo "initramfs: fallback root device = $ROOTDEV"
+    log "fallback = $ROOTDEV"
 fi
 
 if [ -z "$ROOTDEV" ]; then
-    echo "ERROR: Could not find root device"
-    echo "Available devices:"
-    blkid 2>/dev/null || ls /dev/vd* /dev/sd* 2>/dev/null
+    log "ERROR: no root device found"
+    blkid 2>/dev/null
     exec /bin/sh
 fi
 
-echo "initramfs: mounting rootfs $ROOTDEV"
+log "mounting rootfs $ROOTDEV"
+mkdir -p /mnt/root
 mount -t ext4 -o ro "$ROOTDEV" /mnt/root || {
-    echo "ERROR: Failed to mount rootfs, trying rw..."
+    log "ro mount failed, trying rw..."
     mount -t ext4 "$ROOTDEV" /mnt/root || {
-        echo "FATAL: Cannot mount rootfs"
+        log "FATAL: cannot mount rootfs"
         exec /bin/sh
     }
 }
 
-echo "initramfs: rootfs mounted"
+log "rootfs mounted, setting up overlay..."
 
-# Setup persistent overlay if persistent partition exists
+# Setup persistent overlay
 if blkid -L persistent >/dev/null 2>&1; then
     PERSISTENT=$(blkid -L persistent)
-    echo "initramfs: mounting persistent $PERSISTENT"
+    log "persistent=$PERSISTENT"
+    mkdir -p /mnt/root/mnt/persistent
     mount -t ext4 "$PERSISTENT" /mnt/root/mnt/persistent 2>/dev/null
     if mountpoint -q /mnt/root/mnt/persistent 2>/dev/null; then
         mount --make-rshared /mnt/root
@@ -82,11 +85,13 @@ if blkid -L persistent >/dev/null 2>&1; then
         mount -t overlay overlay \
             -o lowerdir=/mnt/root/etc,upperdir=/mnt/root/mnt/persistent/etc,workdir=/mnt/root/mnt/persistent/.etc-work \
             /mnt/root/etc 2>/dev/null
-        echo "initramfs: overlay setup done"
+        log "overlay setup done"
+    else
+        log "persistent mount failed"
     fi
 fi
 
-echo "initramfs: switching to real rootfs"
+log "switching to real rootfs"
 exec switch_root /mnt/root /sbin/init
-echo "initramfs: switch_root failed!"
+log "switch_root failed!"
 exec /bin/sh
