@@ -12,6 +12,8 @@ disk_name="${rootfs_part: : -1}"
 bootloader_part="${disk_name}1"
 
 if [[ -z "$1" || "$1" == "mount"  ]] ; then
+    # Unmount any stale mount first, then remount
+    umount /boot 2>/dev/null || true
     mount "${bootloader_part}" /boot 2>/dev/null
 elif [[ "$1" == "umount" ]] ; then
     umount /boot
