@@ -33,6 +33,6 @@ IMAGE_OVERHEAD_FACTOR = "1.0"
 
 # Install our custom init script
 install_init() {
-    install -m 0755 ${UNPACKDIR}/init ${IMAGE_ROOTFS}/init
+    install -m 0755 ${WORKDIR}/init ${IMAGE_ROOTFS}/init
 }
 IMAGE_PREPROCESS_COMMAND:append = " install_init;"
