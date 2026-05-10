@@ -75,7 +75,7 @@ FILES:${PN}-hawkbit:append = " \
     ${systemd_unitdir}/system/swupdate_hawkbit.service \
 "
 
-RDEPENDS:${PN} = "bash dosfstools grub-efi-editenv swupdate udev"
+RDEPENDS:${PN} = "bash dosfstools swupdate udev rsync"
 RDEPENDS:${PN}-hawkbit = "bash ${PN}"
 
 SYSTEMD_SERVICE:${PN} = "swupdate_check.service"
