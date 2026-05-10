@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 inherit deploy
-inherit boot-partition
 
 IMAGE_INSTALL:append = " \
     cukinia-tests-update \

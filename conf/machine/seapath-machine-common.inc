@@ -23,4 +23,5 @@ APPEND += " \
     mce=0 \
     page_alloc.shuffle=1 \
     rng_core.default_quality=500 \
+    efi=runtime \
 "
