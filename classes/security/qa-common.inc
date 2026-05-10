@@ -58,3 +58,25 @@ check_grub_configuration(){
     }
 }
 
+check_systemd_boot(){
+    local bootdir="${IMAGE_ROOTFS}/boot"
+
+    # Verify systemd-boot EFI binary exists
+    if [ ! -f "${bootdir}/EFI/BOOT/bootx64.efi" ] ; then
+        bberror "systemd-boot EFI binary not found in ${bootdir}/EFI/BOOT/"
+        return 1
+    fi
+
+    # Verify loader config exists
+    if [ ! -f "${bootdir}/loader/loader.conf" ] ; then
+        bberror "loader.conf not found in ${bootdir}/loader/"
+        return 2
+    fi
+
+    # Verify at least one boot entry exists
+    if ! ls "${bootdir}/loader/entries/"*.conf 2>/dev/null ; then
+        bberror "No boot entries found in ${bootdir}/loader/entries/"
+        return 3
+    fi
+}
+

@@ -11,11 +11,11 @@
 
 require qa-common.inc
 
-grub_file_is_setup_properly() {
-    check_grub_configuration "${IMAGE_ROOTFS}/boot/EFI/BOOT/grub.cfg"
+systemd_boot_is_setup_properly() {
+    check_systemd_boot
 }
 
-IMAGE_QA_COMMANDS += "          \
-    grub_file_is_setup_properly \
-    verify_secureboot_signature \
+IMAGE_QA_COMMANDS += "              \
+    systemd_boot_is_setup_properly \
+    verify_secureboot_signature   \
 "
