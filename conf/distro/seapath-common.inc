@@ -114,5 +114,8 @@ USERADD_GID_TABLES = "conf/distro/include/group.gid"
 
 
 
-# Use the cephadm recipe as cephadm provider to have the latest version
+# Use the cephadm recipe as cephadm provider to have the latest version
 PREFERRED_RPROVIDER_cephadm = "cephadm"
+
+# Use SEAPATH systemd-boot-conf as boot configuration provider
+PREFERRED_RPROVIDER_virtual-systemd-bootconf = "systemd-boot-conf"
