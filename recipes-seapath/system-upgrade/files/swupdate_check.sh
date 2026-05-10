@@ -3,33 +3,53 @@
 # Copyright (C) 2026 Savoir-faire Linux, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-# Boot-time update health check for systemd-boot
-# Checks if current boot slot has a tries counter set, and assesses
-# system health to commit or roll back the update.
+# Boot-time update health check
+# Uses a bootcount file on the ESP to implement A/B fallback.
+# systemd-boot does not support 'tries' for Type #1 entries,
+# so we manage the counter ourselves.
 
 /usr/share/update/mount_boot.sh mount
 
-# Read default entry from loader.conf
-default_entry=$(grep '^default' /boot/loader/loader.conf | awk '{print $2}')
+BOOTCOUNT_FILE="/boot/.seapath-bootcount"
+LOADER_CONF="/boot/loader/loader.conf"
 
-if [ -z "${default_entry}" ] ; then
-    default_entry="seapath-slot-a.conf"
-fi
+# Check if there's an active boot counter (post-update boot)
+if [ -f "${BOOTCOUNT_FILE}" ] ; then
+    bootcount=$(cat "${BOOTCOUNT_FILE}")
 
-# Check if the default entry has a tries counter (indicates post-update boot)
-if grep -q "^tries " "/boot/loader/entries/${default_entry}" 2>/dev/null ; then
     if ! /usr/share/update/check-health.sh ; then
-        echo "Update tests have failed" 1>&2
-        echo "Rebooting to the last working state..."
-        /usr/share/update/mount_boot.sh umount
-        reboot
-        exit 1
+        echo "Health check failed (attempt ${bootcount})" 1>&2
+
+        if [ "${bootcount}" -le 1 ] ; then
+            # Exhausted all attempts: fall back to the other slot
+            echo "Boot attempts exhausted, falling back to previous slot" 1>&2
+            rm -f "${BOOTCOUNT_FILE}"
+
+            # Read current default and switch to the other slot
+            current_default=$(grep '^default' "${LOADER_CONF}" | awk '{print $2}')
+            if echo "${current_default}" | grep -q "slot-a" ; then
+                sed -i "s/^default .*/default seapath-slot-b.conf/" "${LOADER_CONF}"
+            else
+                sed -i "s/^default .*/default seapath-slot-a.conf/" "${LOADER_CONF}"
+            fi
+
+            /usr/share/update/mount_boot.sh umount
+            touch /var/log/update_failure
+            reboot
+            exit 1
+        else
+            # Decrement counter and try again
+            echo "$((bootcount - 1))" > "${BOOTCOUNT_FILE}"
+            echo "Decremented boot counter to $((bootcount - 1)), retrying..." 1>&2
+            /usr/share/update/mount_boot.sh umount
+            reboot
+            exit 1
+        fi
     else
+        # Health check passed: commit the update
         echo "Update success"
-        # Remove tries counter to commit the update
-        sed -i '/^tries /d' "/boot/loader/entries/${default_entry}"
+        rm -f "${BOOTCOUNT_FILE}"
         rm -f /var/log/update_marker
-        /usr/share/update/switch_bootloader.sh disable
         touch /var/log/update_success
     fi
 fi
@@ -37,10 +57,7 @@ fi
 /usr/share/update/mount_boot.sh umount
 
 if [ -f /var/log/update_marker ] ; then
-    # The update failed (marker exists but no active tries entry)
+    # The update failed (marker exists but no boot counter file)
     rm -f /var/log/update_marker
-    /usr/share/update/switch_bootloader.sh
-    /usr/share/update/switch_bootloader.sh disable
-    echo "Update have failed" 1>&2
     touch /var/log/update_failure
 fi
