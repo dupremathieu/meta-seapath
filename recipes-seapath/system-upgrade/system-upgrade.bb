@@ -22,6 +22,8 @@ SRC_URI = "\
     file://swupdate_hawkbit.service \
     file://swupdate_hawkbit.sh \
     file://check-health.sh \
+    file://bootctl-update.sh \
+    file://bootctl-update.service \
 "
 
 SRCREV = "1.2"
@@ -48,6 +50,10 @@ do_install () {
         ${D}${datadir}/update/swupdate_check.sh
     install -m 0644 ${WORKDIR}/swupdate_check.service \
         ${D}${systemd_unitdir}/system/swupdate_check.service
+    install -m 0755 ${WORKDIR}/bootctl-update.sh \
+        ${D}${datadir}/update/bootctl-update.sh
+    install -m 0644 ${WORKDIR}/bootctl-update.service \
+        ${D}${systemd_unitdir}/system/bootctl-update.service
 
     # hawkbit
     install -m 0755 ${WORKDIR}/swupdate_hawkbit.sh \
@@ -67,7 +73,9 @@ FILES:${PN}:append = " \
     ${datadir}/update/switch_bootloader.sh \
     ${datadir}/update/check-health.sh \
     ${datadir}/update/swupdate_check.sh \
+    ${datadir}/update/bootctl-update.sh \
     ${systemd_unitdir}/system/swupdate_check.service \
+    ${systemd_unitdir}/system/bootctl-update.service \
 "
 FILES:${PN}-hawkbit:append = " \
     ${datadir}/update/swupdate_hawkbit.sh \
@@ -78,5 +86,5 @@ FILES:${PN}-hawkbit:append = " \
 RDEPENDS:${PN} = "bash dosfstools swupdate udev rsync"
 RDEPENDS:${PN}-hawkbit = "bash ${PN}"
 
-SYSTEMD_SERVICE:${PN} = "swupdate_check.service"
+SYSTEMD_SERVICE:${PN} = "swupdate_check.service bootctl-update.service"
 SYSTEMD_SERVICE:${PN}-hawkbit = "swupdate_hawkbit.service"

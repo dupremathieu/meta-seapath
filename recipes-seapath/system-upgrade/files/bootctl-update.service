@@ -1,0 +1,18 @@
+# Copyright (C) 2026 Savoir-faire Linux, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description="Sync ESP with systemd-boot entries and kernel"
+Before=boot-complete.target
+Wants=boot-complete.target
+After=local-fs.target
+Before=boot-complete.target
+ConditionFileIsExecutable=/usr/share/update/bootctl-update.sh
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/share/update/bootctl-update.sh
+
+[Install]
+WantedBy=basic.target
