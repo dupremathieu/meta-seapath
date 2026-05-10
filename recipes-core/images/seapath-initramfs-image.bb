@@ -14,11 +14,13 @@ SRC_URI = "file://init"
 PACKAGE_INSTALL = " \
     base-files \
     base-passwd \
-    busybox \
+    bash \
+    util-linux \
     util-linux-blkid \
     util-linux-findfs \
     util-linux-mount \
     e2fsprogs \
+    e2fsprogs-mke2fs \
 "
 
 IMAGE_FEATURES = ""
@@ -28,8 +30,6 @@ INITRAMFS_FSTYPES = "cpio.gz"
 
 IMAGE_ROOTFS_SIZE = "8192"
 IMAGE_OVERHEAD_FACTOR = "1.0"
-
-BAD_RECOMMENDATIONS += "busybox-syslog"
 
 # Install our custom init script
 install_init() {
