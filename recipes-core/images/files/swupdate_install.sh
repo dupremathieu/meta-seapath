@@ -80,6 +80,10 @@ do_postinst()
     if [ -f /mnt/upgrade/boot/bzImage ] ; then
         cp /mnt/upgrade/boot/bzImage /boot/bzImage || die "Could not copy kernel"
     fi
+    # Initramfs
+    if [ -f /mnt/upgrade/boot/initrd ] ; then
+        cp /mnt/upgrade/boot/initrd /boot/initrd || die "Could not copy initrd"
+    fi
 
     # Loader entries (from updated rootfs)
     if [ -d /mnt/upgrade/boot/loader/entries ] ; then
