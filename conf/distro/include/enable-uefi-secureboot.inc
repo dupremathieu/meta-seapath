@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Configuration to use meta-secure-core layer signing facilities
-# to implement UEFI SecureBoot.
+# to implement UEFI SecureBoot with systemd-boot.
 
 # Set the UEFI SecureBoot feature
 DISTRO_FEATURES:append = " efi-secure-boot"
@@ -23,20 +23,16 @@ UEFI_SB = "1"
 # DB/DBX/KEK/PK variables without needing shim.
 MOK_SB = "0"
 
-# Use SELoader for GRUB to sign any artifact with SecureBoot keys
-# and allow propagation of SecureBoot chain up to the kernel.
-UEFI_SELOADER = "1"
+# systemd-boot is a native UEFI application that supports SecureBoot
+# directly. SELoader was needed for GRUB to propagate the SecureBoot
+# chain, but systemd-boot handles this natively.
+# Kernel signing is done directly without SELoader.
+UEFI_SELOADER = "0"
 
-# GPG signing will not be used as the GRUB is supposed to
-# be a static binary and kernel will be signed and verified
-# by SELoader.
+# GPG signing will not be used as systemd-boot verifies signatures
+# natively through UEFI SecureBoot.
 GRUB_SIGN_VERIFY = "0"
 GRUB_SIGN_VERIFY_STRICT = "0"
 
 # Set signed files into the appropriate boot folder
 EFI_BOOT_PATH = "/boot/EFI/BOOT"
-
-# Set correct ESP partition target path for SELoader and
-# OVMF DXE drivers
-EFI_TARGET:pn-seloader = "${EFI_BOOT_PATH}"
-EFI_TARGET:pn-ovmf = "${EFI_BOOT_PATH}"
