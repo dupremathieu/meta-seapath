@@ -4,10 +4,10 @@
 # short-description: Create an EFI disk image
 # long-description: Creates a partitioned EFI disk image that the user
 # can directly dd to boot media.
+# Single ESP (systemd-boot) with dual rootfs (A/B) layout.
 bootloader --ptable gpt
 
-part /boot --source rootfs --rootfs-dir=${IMAGE_ROOTFS}/boot --ondisk sda --label efi0 --active --align 1024  --part-type C12A7328-F81F-11D2-BA4B-00A0C93EC93B --size 128M
-part /boot --ondisk sda --label efi1 --active --align 1024  --part-type C12A7328-F81F-11D2-BA4B-00A0C93EC93B --size 128M
+part /boot --source rootfs --rootfs-dir=${IMAGE_ROOTFS}/boot --ondisk sda --label boot --active --align 1024 --part-type C12A7328-F81F-11D2-BA4B-00A0C93EC93B --size 1024M
 
 part / --source rootfs --exclude-path boot/ --ondisk sda --fstype=ext4 --label rootfs0 --align 1024 --size 8G
 part / --ondisk sda --fstype=ext4 --label rootfs1 --align 1024 --size 8G
