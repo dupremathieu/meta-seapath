@@ -4,13 +4,6 @@ software =
 
     images: (
         {
-            filename = "@@IMAGE_DEPENDS@@-boot.tar.xz";
-            filesystem = "vfat";
-            type = "archive";
-            device = "/dev/upgradable_bootloader";
-            path = "/";
-        },
-        {
             filename = "@@IMAGE_DEPENDS@@-@@MACHINE@@.rootfs.tar.xz";
             filesystem = "ext4";
             type = "archive";
