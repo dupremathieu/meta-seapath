@@ -1,6 +1,6 @@
 #!/bin/bash
 # Copyright (C) 2021, RTE (http://www.rte-france.com)
-# Copyright (C) 2023 Savoir-faire Linux, Inc.
+# Copyright (C) 2026 Savoir-faire Linux, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
 die()
@@ -21,42 +21,31 @@ do_preinst()
         rm -f /var/log/update_failure
     fi
 
-    if [ ! -L "/dev/upgradable_bootloader" ] ; then
-        die "Could not find symbolic link /dev/upgradable_bootloader"
+    if [ ! -L "/dev/upgradable_rootfs" ] ; then
+        die "Could not find symbolic link /dev/upgradable_rootfs"
     fi
 
-    if [ ! -L "/dev/upgradable_rootfs" ] ; then
-        die "Could not find symbolic link /dev/upgradable_rootfs" 1>&2
-    fi
-    bootloader_part=$(readlink -f /dev/upgradable_bootloader)
     rootfs_part=$(readlink -f /dev/upgradable_rootfs)
 
-    # Make sure partitions are unmounted
-    for part in "$bootloader_part" "$rootfs_part" ; do
-        if grep -q "$part" /proc/mounts ; then
-            umount -f "$part" || die "Error when umounting $part"
-        fi
-    done
+    # Make sure partition is unmounted
+    if grep -q "$rootfs_part" /proc/mounts ; then
+        umount -f "$rootfs_part" || die "Error when umounting $rootfs_part"
+    fi
 
     # Labels can be deduced from static partitioning
-    # - Slot A: /dev/<disk>1 (bootloader) + /dev/<disk>3 (rootfs)
-    # - Slot B: /dev/<disk>2 (bootloader) + /dev/<disk>4 (rootfs)
-
+    # New layout: p1=boot(ESP), p2=rootfs0(Slot A), p3=rootfs1(Slot B)
     part_num="${rootfs_part:(-1)}"
 
-    if [[ "${part_num}" == "3" ]] ; then
-        bootloader_label="efi0"
+    if [[ "${part_num}" == "2" ]] ; then
         rootfs_label="rootfs0"
+        slot="a"
     else
-        bootloader_label="efi1"
         rootfs_label="rootfs1"
+        slot="b"
     fi
 
-    if ! mkfs.vfat -n "$bootloader_label" "$bootloader_part" 2>&1 ; then
-        die "Error when formating the boot partition"
-    fi
     if ! mkfs.ext4 -q -F "$rootfs_part" -L "$rootfs_label" ; then
-        die "Error when formating the root partition"
+        die "Error when formatting the root partition"
     fi
 }
 
@@ -64,28 +53,60 @@ do_postinst()
 {
     echo "Post-Install:"
 
-    # Make sure current slot's bootloader is not mounted
-    umount -fq /boot || true
+    rootfs_part=$(readlink -f /dev/upgradable_rootfs)
+    part_num="${rootfs_part:(-1)}"
 
-    # Update grubenv
-    if ! mount -t vfat /dev/upgradable_bootloader /boot ; then
-        die "Could not mount /dev/upgradable_bootloader"
-    fi
-
-    if ! grub-editenv /boot/EFI/BOOT/grubenv create ; then
-        die "Could not create grubenv"
-    fi
-    if ! grub-editenv /boot/EFI/BOOT/grubenv set bootcount=0 ; then
-        die "Could not set bootcount in grubenv"
+    if [[ "${part_num}" == "2" ]] ; then
+        slot="a"
+        slot_label="rootfs0"
+        old_slot="b"
+    else
+        slot="b"
+        slot_label="rootfs1"
+        old_slot="a"
     fi
 
-    if ! umount -f /boot  ; then
-        die "Could not unmount /boot"
+    # Mount ESP
+    /usr/share/update/mount_boot.sh mount || die "Could not mount ESP"
+
+    # Mount updated rootfs
+    mkdir -p /mnt/upgrade
+    if ! mount "$rootfs_part" /mnt/upgrade ; then
+        die "Could not mount updated rootfs"
     fi
 
-    if ! /usr/share/update/switch_bootloader.sh ; then
-        die "Switch bootloader did not succeed"
+    # Copy kernel and loader entries from updated rootfs to ESP
+    # Kernel
+    if [ -f /mnt/upgrade/boot/bzImage ] ; then
+        cp /mnt/upgrade/boot/bzImage /boot/bzImage || die "Could not copy kernel"
     fi
+
+    # Loader entries (from updated rootfs)
+    if [ -d /mnt/upgrade/boot/loader/entries ] ; then
+        cp /mnt/upgrade/boot/loader/entries/*.conf /boot/loader/entries/ || \
+            echo "Warning: no loader entries found in updated rootfs"
+    fi
+
+    umount /mnt/upgrade
+    rmdir /mnt/upgrade
+
+    # Set tries on the updated slot entry for boot counting
+    updated_entry="/boot/loader/entries/seapath-slot-${slot}.conf"
+    if [ -f "${updated_entry}" ] ; then
+        # Remove existing tries line if present
+        sed -i '/^tries /d' "${updated_entry}"
+        echo "tries 3" >> "${updated_entry}"
+    fi
+
+    # Try the updated slot once (oneshot)
+    if ! bootctl set-oneshot "seapath-slot-${slot}.conf" 2>/dev/null ; then
+        # If set-oneshot is not available, use set-default
+        bootctl set-default "seapath-slot-${slot}.conf" || \
+            die "Could not set updated slot as boot target"
+    fi
+
+    /usr/share/update/mount_boot.sh umount
+
     touch /var/log/update_marker
 }
 
