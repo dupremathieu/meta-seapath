@@ -1,4 +1,0 @@
-default=boot
-menuentry 'boot' --unrestricted{
-linux /bzImage root=/dev/vda2 $kernel_parameters
-}
