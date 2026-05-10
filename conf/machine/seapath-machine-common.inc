@@ -13,7 +13,6 @@ EFI_PROVIDER = "systemd-boot"
 
 # Initramfs for rootfs discovery and overlay setup
 INITRAMFS_IMAGE = "seapath-initramfs-image"
-INITRAMFS_IMAGE_BUNDLE = "1"
 
 # Kernel parameters
 APPEND += " \
