@@ -28,8 +28,9 @@ INITRAMFS_FSTYPES = "cpio.gz"
 IMAGE_ROOTFS_SIZE = "8192"
 IMAGE_OVERHEAD_FACTOR = "1.0"
 
-# Disable kernel config hardening check (not needed for initramfs)
-do_kconfig_hardened_check[noexec] = "1"
+# Disable kernel config hardening check (not needed for initramfs, and
+# kconfig-hardened-check-native is not in initramfs recipe sysroot)
+IMAGE_POSTPROCESS_COMMAND:remove = "do_kconfig_hardened_check ;"
 
 # Override MANIFESTS_LIST - no kernel config available at initramfs build time
 MANIFESTS_LIST = "IMAGE_MANIFEST BUILDINFO_FILE"
