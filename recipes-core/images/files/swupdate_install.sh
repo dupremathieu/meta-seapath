@@ -103,6 +103,11 @@ do_postinst()
         echo "tries 3" >> "${updated_entry}"
     fi
 
+    # Mount efivarfs if not already mounted (bootctl needs EFI runtime)
+    if ! grep -q /sys/firmware/efi/efivars /proc/mounts 2>/dev/null ; then
+        mount -t efivarfs efivarfs /sys/firmware/efi/efivars 2>/dev/null || true
+    fi
+
     # Try the updated slot once (oneshot)
     if ! bootctl set-oneshot "seapath-slot-${slot}.conf" 2>/dev/null ; then
         # If set-oneshot is not available, use set-default
