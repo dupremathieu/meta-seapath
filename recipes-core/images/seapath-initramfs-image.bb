@@ -11,6 +11,7 @@ PACKAGE_INSTALL = " \
     base-files \
     base-passwd \
     bash \
+    coreutils \
     util-linux \
     util-linux-blkid \
     util-linux-findfs \
