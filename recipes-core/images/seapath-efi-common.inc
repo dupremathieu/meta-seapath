@@ -2,13 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 inherit deploy
-inherit boot-partition
 
-IMAGE_INSTALL:remove = "grub"
 IMAGE_INSTALL:append = " \
-    grub-efi             \
-    efitools             \
-    efibootmgr           \
+    systemd-boot          \
+    systemd-boot-conf     \
+    rsync                 \
 "
 
 # Cockpit web GUI
