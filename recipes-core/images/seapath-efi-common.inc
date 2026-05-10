@@ -3,6 +3,15 @@
 
 inherit deploy
 
+# Copy initramfs to boot directory (for ESP population via WIC)
+copy_initramfs_to_boot() {
+    if [ -n "${INITRAMFS_IMAGE}" ]; then
+        install -m 0644 ${DEPLOY_DIR_IMAGE}/${INITRAMFS_IMAGE_NAME}.cpio.gz \
+            ${IMAGE_ROOTFS}/boot/initrd 2>/dev/null || true
+    fi
+}
+IMAGE_PREPROCESS_COMMAND:append = " copy_initramfs_to_boot;"
+
 IMAGE_INSTALL:append = " \
     systemd-boot          \
     systemd-boot-conf     \
