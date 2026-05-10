@@ -27,13 +27,10 @@ INITRAMFS_FSTYPES = "cpio.gz"
 IMAGE_ROOTFS_SIZE = "8192"
 IMAGE_OVERHEAD_FACTOR = "1.0"
 
-# Do not pollute the initramfs image with rootfs features
-SKIP_FEATURE_remove = "empty-root-password debug-tweaks read-only-rootfs"
-
 BAD_RECOMMENDATIONS += "busybox-syslog"
 
 # Install our custom init script
 install_init() {
     install -m 0755 ${UNPACKDIR}/init ${IMAGE_ROOTFS}/init
 }
-IMAGE_PREPROCESS_COMMAND += "install_init;"
+IMAGE_PREPROCESS_COMMAND:append = " install_init;"
