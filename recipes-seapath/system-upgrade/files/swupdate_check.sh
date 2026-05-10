@@ -4,15 +4,20 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Boot-time update health check for systemd-boot
-# Replaces GRUB bootcount/grubenv mechanism with systemd-boot boot assessment
+# Checks if current boot slot has a tries counter set, and assesses
+# system health to commit or roll back the update.
 
 /usr/share/update/mount_boot.sh mount
 
-# Check if the current boot entry has a tries counter set
-# (indicates we just booted into an updated slot)
-current_entry=$(bootctl list 2>/dev/null | awk '/current:/ {print $2}' | sed 's,$,,')
+# Read default entry from loader.conf
+default_entry=$(grep '^default' /boot/loader/loader.conf | awk '{print $2}')
 
-if grep -q "^tries " /boot/loader/entries/"${current_entry}" 2>/dev/null ; then
+if [ -z "${default_entry}" ] ; then
+    default_entry="seapath-slot-a.conf"
+fi
+
+# Check if the default entry has a tries counter (indicates post-update boot)
+if grep -q "^tries " "/boot/loader/entries/${default_entry}" 2>/dev/null ; then
     if ! /usr/share/update/check-health.sh ; then
         echo "Update tests have failed" 1>&2
         echo "Rebooting to the last working state..."
@@ -21,10 +26,9 @@ if grep -q "^tries " /boot/loader/entries/"${current_entry}" 2>/dev/null ; then
         exit 1
     else
         echo "Update success"
-        # Mark boot as successful - resets tries counter
-        bootctl || echo "bootctl success marker failed"
+        # Remove tries counter to commit the update
+        sed -i '/^tries /d' "/boot/loader/entries/${default_entry}"
         rm -f /var/log/update_marker
-        # Commit the new default, remove tries from old entry
         /usr/share/update/switch_bootloader.sh disable
         touch /var/log/update_success
     fi

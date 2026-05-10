@@ -96,24 +96,17 @@ do_postinst()
     rmdir "$UPGRADE_MNT"
 
     # Set tries on the updated slot entry for boot counting
+    # tries must be placed before the linux line (Boot Loader Spec requirement)
     updated_entry="/boot/loader/entries/seapath-slot-${slot}.conf"
     if [ -f "${updated_entry}" ] ; then
-        # Remove existing tries line if present
         sed -i '/^tries /d' "${updated_entry}"
-        echo "tries 3" >> "${updated_entry}"
+        sed -i "/^linux /i tries 3" "${updated_entry}"
     fi
 
-    # Mount efivarfs if not already mounted (bootctl needs EFI runtime)
-    if ! grep -q /sys/firmware/efi/efivars /proc/mounts 2>/dev/null ; then
-        mount -t efivarfs efivarfs /sys/firmware/efi/efivars 2>/dev/null || true
-    fi
-
-    # Try the updated slot once (oneshot)
-    if ! bootctl set-oneshot "seapath-slot-${slot}.conf" 2>/dev/null ; then
-        # If set-oneshot is not available, use set-default
-        bootctl set-default "seapath-slot-${slot}.conf" || \
-            die "Could not set updated slot as boot target"
-    fi
+    # Set the updated slot as the default (systemd-boot reads default from loader.conf)
+    # We avoid bootctl for EFI variable access; direct file editing is more reliable
+    sed -i "s/^default .*/default seapath-slot-${slot}.conf/" /boot/loader/loader.conf || \
+        die "Could not set default boot entry"
 
     /usr/share/update/mount_boot.sh umount
 
