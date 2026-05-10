@@ -33,6 +33,19 @@ do_kconfig_hardened_check[noexec] = "1"
 # Override MANIFESTS_LIST - no kernel config available at initramfs build time
 MANIFESTS_LIST = "IMAGE_MANIFEST BUILDINFO_FILE"
 
+# Create the expected initramfs deploy link without .rootfs suffix
+# Kernel do_bundle_initramfs expects ${INITRAMFS_IMAGE_NAME}.cpio.gz
+create_initramfs_bundle_link() {
+    for img in ${INITRAMFS_FSTYPES}; do
+        src="${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.${img}"
+        dst="${IMGDEPLOYDIR}/${INITRAMFS_IMAGE_NAME}.${img}"
+        if [ -f "$src" ] && [ ! -f "$dst" ]; then
+            ln -sf "$(basename "$src")" "$dst"
+        fi
+    done
+}
+IMAGE_POSTPROCESS_COMMAND:append = " create_initramfs_bundle_link;"
+
 # Install our custom init script
 install_init() {
     install -m 0755 ${THISDIR}/seapath-initramfs/init ${IMAGE_ROOTFS}/init
