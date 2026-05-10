@@ -31,9 +31,6 @@ do_compile() {
         fi
     fi
 
-    cp ${S}/seapath-slot-a.conf ${B}/seapath-slot-a.conf
-    cp ${S}/seapath-slot-b.conf ${B}/seapath-slot-b.conf
-
     sed -e "s|^options .*|options ${APPEND}${extra_append} root=LABEL=rootfs0|" \
         -i ${B}/seapath-slot-a.conf
     sed -e "s|^options .*|options ${APPEND}${extra_append} root=LABEL=rootfs1|" \
@@ -51,7 +48,7 @@ do_compile:append:seapath-hypervisor() {
 do_install() {
     install -d ${D}/boot/loader
     install -d ${D}/boot/loader/entries
-    install -m 0644 ${S}/loader.conf ${D}/boot/loader/loader.conf
+    install -m 0644 ${B}/loader.conf ${D}/boot/loader/loader.conf
     install -m 0644 ${B}/seapath-slot-a.conf ${D}/boot/loader/entries/
     install -m 0644 ${B}/seapath-slot-b.conf ${D}/boot/loader/entries/
 }
