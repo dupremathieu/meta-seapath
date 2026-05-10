@@ -66,7 +66,8 @@ do_postinst()
         old_slot="a"
     fi
 
-    # Mount ESP
+    # Mount ESP (unmount any stale mount first)
+    umount /boot 2>/dev/null || true
     /usr/share/update/mount_boot.sh mount || die "Could not mount ESP"
 
     # Mount updated rootfs (use writable tmpfs location)
