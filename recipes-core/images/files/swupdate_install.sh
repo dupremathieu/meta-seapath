@@ -69,30 +69,31 @@ do_postinst()
     # Mount ESP
     /usr/share/update/mount_boot.sh mount || die "Could not mount ESP"
 
-    # Mount updated rootfs
-    mkdir -p /mnt/upgrade
-    if ! mount "$rootfs_part" /mnt/upgrade ; then
+    # Mount updated rootfs (use writable tmpfs location)
+    UPGRADE_MNT="/tmp/upgrade"
+    mkdir -p "$UPGRADE_MNT"
+    if ! mount "$rootfs_part" "$UPGRADE_MNT" ; then
         die "Could not mount updated rootfs"
     fi
 
     # Copy kernel and loader entries from updated rootfs to ESP
     # Kernel
-    if [ -f /mnt/upgrade/boot/bzImage ] ; then
-        cp /mnt/upgrade/boot/bzImage /boot/bzImage || die "Could not copy kernel"
+    if [ -f "$UPGRADE_MNT/boot/bzImage" ] ; then
+        cp "$UPGRADE_MNT/boot/bzImage" /boot/bzImage || die "Could not copy kernel"
     fi
     # Initramfs
-    if [ -f /mnt/upgrade/boot/initrd ] ; then
-        cp /mnt/upgrade/boot/initrd /boot/initrd || die "Could not copy initrd"
+    if [ -f "$UPGRADE_MNT/boot/initrd" ] ; then
+        cp "$UPGRADE_MNT/boot/initrd" /boot/initrd || die "Could not copy initrd"
     fi
 
     # Loader entries (from updated rootfs)
-    if [ -d /mnt/upgrade/boot/loader/entries ] ; then
-        cp /mnt/upgrade/boot/loader/entries/*.conf /boot/loader/entries/ || \
+    if [ -d "$UPGRADE_MNT/boot/loader/entries" ] ; then
+        cp "$UPGRADE_MNT/boot/loader/entries/"*.conf /boot/loader/entries/ || \
             echo "Warning: no loader entries found in updated rootfs"
     fi
 
-    umount /mnt/upgrade
-    rmdir /mnt/upgrade
+    umount "$UPGRADE_MNT"
+    rmdir "$UPGRADE_MNT"
 
     # Set tries on the updated slot entry for boot counting
     updated_entry="/boot/loader/entries/seapath-slot-${slot}.conf"
