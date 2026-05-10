@@ -11,6 +11,10 @@ IMAGE_FSTYPES = "wic"
 SERIAL_CONSOLES = "115200;ttyS0"
 EFI_PROVIDER = "systemd-boot"
 
+# Initramfs for rootfs discovery and overlay setup
+INITRAMFS_IMAGE = "seapath-initramfs-image"
+INITRAMFS_IMAGE_BUNDLE = "1"
+
 # Kernel parameters
 APPEND += " \
     audit=0 \
