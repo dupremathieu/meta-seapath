@@ -7,10 +7,6 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 inherit image
 
-FILESEXTRAPATHS:prepend := "${THISDIR}/seapath-initramfs:"
-
-SRC_URI = "file://init"
-
 PACKAGE_INSTALL = " \
     base-files \
     base-passwd \
@@ -33,6 +29,6 @@ IMAGE_OVERHEAD_FACTOR = "1.0"
 
 # Install our custom init script
 install_init() {
-    install -m 0755 ${WORKDIR}/init ${IMAGE_ROOTFS}/init
+    install -m 0755 ${THISDIR}/seapath-initramfs/init ${IMAGE_ROOTFS}/init
 }
 IMAGE_PREPROCESS_COMMAND:append = " install_init;"
