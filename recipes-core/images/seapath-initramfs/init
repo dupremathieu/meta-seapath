@@ -1,0 +1,87 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# SEAPATH initramfs init script
+# Handles rootfs discovery (by LABEL/PARTUUID), persistent overlay setup,
+# and switch_root to the real root filesystem.
+
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+
+# Parse root= from kernel command line
+ROOTSPEC=""
+for arg in $(cat /proc/cmdline); do
+    case "$arg" in
+        root=*) ROOTSPEC="${arg#root=}" ;;
+    esac
+done
+
+if [ -z "$ROOTSPEC" ]; then
+    echo "ERROR: root= not found in kernel command line"
+    exec /bin/sh
+fi
+
+# Resolve root device
+ROOTDEV=""
+# Try LABEL=, PARTUUID=, UUID=, or direct device path
+case "$ROOTSPEC" in
+    LABEL=*)
+        LABEL="${ROOTSPEC#LABEL=}"
+        ROOTDEV=$(findfs LABEL="$LABEL" 2>/dev/null)
+        ;;
+    PARTUUID=*)
+        UUID="${ROOTSPEC#PARTUUID=}"
+        ROOTDEV=$(findfs PARTUUID="$UUID" 2>/dev/null)
+        ;;
+    UUID=*)
+        UUID="${ROOTSPEC#UUID=}"
+        ROOTDEV=$(findfs UUID="$UUID" 2>/dev/null)
+        ;;
+    /dev/*)
+        ROOTDEV="$ROOTSPEC"
+        ;;
+esac
+
+if [ -z "$ROOTDEV" ]; then
+    echo "ERROR: Could not resolve root device from: $ROOTSPEC"
+    echo "Waiting 5 seconds for devices to settle..."
+    sleep 5
+    case "$ROOTSPEC" in
+        LABEL=*) ROOTDEV=$(findfs LABEL="${ROOTSPEC#LABEL=}" 2>/dev/null) ;;
+        PARTUUID=*) ROOTDEV=$(findfs PARTUUID="${ROOTSPEC#PARTUUID=}" 2>/dev/null) ;;
+        UUID=*) ROOTDEV=$(findfs UUID="${ROOTSPEC#UUID=}" 2>/dev/null) ;;
+    esac
+fi
+
+if [ -z "$ROOTDEV" ]; then
+    echo "ERROR: Could not find root device: $ROOTSPEC"
+    echo "Available block devices:"
+    blkid 2>/dev/null
+    exec /bin/sh
+fi
+
+echo "Mounting rootfs: $ROOTDEV"
+mount -t ext4 -o ro "$ROOTDEV" /mnt/root || {
+    echo "ERROR: Failed to mount rootfs"
+    exec /bin/sh
+}
+
+# Setup persistent overlay if persistent partition exists
+if blkid -L persistent >/dev/null 2>&1; then
+    mount -t ext4 "$(blkid -L persistent)" /mnt/root/mnt/persistent 2>/dev/null
+
+    # Setup overlay on /etc if persistent is mounted and roots is overlay-enabled
+    if mountpoint -q /mnt/root/mnt/persistent; then
+        mount --make-rshared /mnt/root
+        mount --make-rshared /mnt/root/mnt/persistent
+        mkdir -p /mnt/root/mnt/persistent/etc
+        mkdir -p /mnt/root/mnt/persistent/.etc-work
+        mkdir -p /mnt/root/mnt/persistent/var
+        mount -t overlay overlay \
+            -o lowerdir=/mnt/root/etc,upperdir=/mnt/root/mnt/persistent/etc,workdir=/mnt/root/mnt/persistent/.etc-work \
+            /mnt/root/etc 2>/dev/null || echo "Warning: overlay mount failed"
+    fi
+fi
+
+echo "Switching to real rootfs..."
+exec switch_root /mnt/root /sbin/init
