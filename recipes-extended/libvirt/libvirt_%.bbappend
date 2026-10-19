@@ -4,6 +4,9 @@
 
 inherit create-dirs
 
+# SEAPATH uses libvirt for QEMU/KVM guests, not LXC containers.
+PACKAGECONFIG:remove = "lxc"
+
 SERVICE_DIRS_LIST = "libvirt"
 SERVICE_DIRS_PREFIX = "{cache,lib,log,run}"
 SERVICE_DIRS_OWNER = "root:root"
